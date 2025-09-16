@@ -3,6 +3,8 @@ import { useForm } from 'react-hook-form';
 import dayjs from 'dayjs';
 import {
   createCustomer,
+  createService,
+  createBarber,
   fetchAppointments,
   fetchBarbers,
   fetchCustomers,
@@ -42,6 +44,22 @@ export default function AdminDashboard() {
       phone: '',
       preferredBarber: '',
       preferredServices: []
+    }
+  });
+  const serviceForm = useForm({
+    defaultValues: {
+      name: '',
+      description: '',
+      durationMinutes: 30,
+      price: ''
+    }
+  });
+  const barberForm = useForm({
+    defaultValues: {
+      name: '',
+      email: '',
+      phone: '',
+      services: []
     }
   });
 
@@ -91,6 +109,47 @@ export default function AdminDashboard() {
       setFeedback({ type: 'success', message: 'Shop details updated.' });
     } catch (error) {
       const message = error.response?.data?.message || 'Could not update shop settings';
+      setFeedback({ type: 'error', message });
+    }
+  });
+
+  const submitService = serviceForm.handleSubmit(async (values) => {
+    try {
+      await createService({
+        name: values.name,
+        description: values.description,
+        durationMinutes: Number(values.durationMinutes),
+        price: Number(values.price)
+      });
+      setFeedback({ type: 'success', message: 'Service added.' });
+      serviceForm.reset({ name: '', description: '', durationMinutes: 30, price: '' });
+      const refreshed = await fetchServices();
+      setServices(refreshed);
+    } catch (error) {
+      const message = error.response?.data?.message || 'Failed to add service';
+      setFeedback({ type: 'error', message });
+    }
+  });
+
+  const submitBarber = barberForm.handleSubmit(async (values) => {
+    try {
+      const serviceIds = Array.isArray(values.services)
+        ? values.services
+        : values.services
+        ? [values.services]
+        : [];
+      await createBarber({
+        name: values.name,
+        email: values.email,
+        phone: values.phone || undefined,
+        services: serviceIds
+      });
+      setFeedback({ type: 'success', message: 'Barber added.' });
+      barberForm.reset({ name: '', email: '', phone: '', services: [] });
+      const refreshed = await fetchBarbers();
+      setBarbers(refreshed);
+    } catch (error) {
+      const message = error.response?.data?.message || 'Failed to add barber';
       setFeedback({ type: 'error', message });
     }
   });
@@ -187,6 +246,108 @@ export default function AdminDashboard() {
             </button>
           </div>
         </form>
+      </section>
+
+      <section className="card">
+        <div className="section-title">
+          <h2>Services</h2>
+          <span className="tag">Manage offerings</span>
+        </div>
+        <form className="grid" style={{ gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }} onSubmit={submitService}>
+          <div>
+            <label htmlFor="service-name">Service name</label>
+            <input id="service-name" {...serviceForm.register('name', { required: true })} />
+          </div>
+          <div>
+            <label htmlFor="service-price">Price ($)</label>
+            <input type="number" step="0.01" id="service-price" {...serviceForm.register('price', { required: true })} />
+          </div>
+          <div>
+            <label htmlFor="service-duration">Duration (minutes)</label>
+            <input type="number" id="service-duration" {...serviceForm.register('durationMinutes', { required: true, min: 5 })} />
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label htmlFor="service-description">Description</label>
+            <textarea id="service-description" rows={2} {...serviceForm.register('description')} />
+          </div>
+          <div style={{ gridColumn: '1 / -1', textAlign: 'right' }}>
+            <button className="primary-button" type="submit" disabled={serviceForm.formState.isSubmitting}>
+              {serviceForm.formState.isSubmitting ? 'Saving...' : 'Add service'}
+            </button>
+          </div>
+        </form>
+        <div className="grid" style={{ marginTop: '1.5rem', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+          {services.map((service) => (
+            <div key={service._id} className="card" style={{ boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.3)' }}>
+              <h3 style={{ marginTop: 0 }}>{service.name}</h3>
+              <p style={{ margin: '0.25rem 0', color: '#1d4ed8', fontWeight: 600 }}>${Number(service.price || 0).toFixed(2)}</p>
+              <p style={{ margin: 0, color: '#64748b' }}>{service.durationMinutes} min</p>
+              <p style={{ marginTop: '0.75rem', color: '#475569' }}>{service.description || '—'}</p>
+            </div>
+          ))}
+          {services.length === 0 ? (
+            <div style={{ color: '#64748b' }}>No services yet. Add your first service above.</div>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="card">
+        <div className="section-title">
+          <h2>Barbers</h2>
+          <span className="tag">Team</span>
+        </div>
+        <form className="grid" style={{ gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }} onSubmit={submitBarber}>
+          <div>
+            <label htmlFor="barber-name">Full name</label>
+            <input id="barber-name" {...barberForm.register('name', { required: true })} />
+          </div>
+          <div>
+            <label htmlFor="barber-email">Email</label>
+            <input type="email" id="barber-email" {...barberForm.register('email', { required: true })} />
+          </div>
+          <div>
+            <label htmlFor="barber-phone">Phone</label>
+            <input id="barber-phone" {...barberForm.register('phone')} />
+          </div>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label htmlFor="barber-services">Services offered</label>
+            <select id="barber-services" multiple {...barberForm.register('services')}>
+              {services.map((service) => (
+                <option key={service._id} value={service._id}>
+                  {service.name}
+                </option>
+              ))}
+            </select>
+            <small style={{ color: '#64748b' }}>Hold CTRL/Cmd to choose multiple services</small>
+          </div>
+          <div style={{ gridColumn: '1 / -1', textAlign: 'right' }}>
+            <button className="primary-button" type="submit" disabled={barberForm.formState.isSubmitting}>
+              {barberForm.formState.isSubmitting ? 'Saving...' : 'Add barber'}
+            </button>
+          </div>
+        </form>
+        <div className="grid" style={{ marginTop: '1.5rem', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+          {barbers.map((barber) => (
+            <div key={barber._id} className="card" style={{ boxShadow: 'none', border: '1px solid rgba(148, 163, 184, 0.3)' }}>
+              <h3 style={{ marginTop: 0 }}>{barber.name}</h3>
+              <p style={{ margin: '0.25rem 0', color: '#475569' }}>{barber.email}</p>
+              {barber.phone ? <p style={{ margin: 0, color: '#64748b' }}>{barber.phone}</p> : null}
+              <div style={{ marginTop: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                {(barber.services || []).map((service) => (
+                  <span key={service._id || service} className="badge" style={{ fontSize: '0.75rem' }}>
+                    {service.name || service}
+                  </span>
+                ))}
+                {(barber.services || []).length === 0 ? (
+                  <span style={{ color: '#94a3b8' }}>No services linked</span>
+                ) : null}
+              </div>
+            </div>
+          ))}
+          {barbers.length === 0 ? (
+            <div style={{ color: '#64748b' }}>No barbers yet. Add team members above.</div>
+          ) : null}
+        </div>
       </section>
 
       <section className="card">

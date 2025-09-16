@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
-import { connectDatabase } from './config/database.js';
+import { initDatabase } from './data/index.js';
 import routes from './routes/index.js';
 import { CLIENT_URL, PORT } from './config/env.js';
 
@@ -24,7 +24,7 @@ app.use((err, _req, res, _next) => {
 });
 
 const start = async () => {
-  await connectDatabase();
+  await initDatabase();
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });

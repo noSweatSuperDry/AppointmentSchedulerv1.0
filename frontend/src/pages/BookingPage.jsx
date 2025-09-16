@@ -45,6 +45,10 @@ export default function BookingPage() {
 
   const selectedService = watch('service');
   const selectedBarber = watch('barber');
+  const serviceDetail = useMemo(
+    () => services.find((service) => service._id === selectedService) || null,
+    [services, selectedService]
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -75,8 +79,16 @@ export default function BookingPage() {
 
   const slotOptions = useMemo(() => {
     if (!shop?.openingTime || !shop?.closingTime) return [];
-    return timeOptions(shop.openingTime, shop.closingTime);
-  }, [shop]);
+    const baseSlots = timeOptions(shop.openingTime, shop.closingTime);
+    if (!serviceDetail) return baseSlots;
+
+    const closing = dayjs(shop.closingTime, 'HH:mm');
+    return baseSlots.filter((slot) => {
+      const start = dayjs(slot, 'HH:mm');
+      const end = start.add(Number(serviceDetail.durationMinutes || 0), 'minute');
+      return end.isSame(closing) || end.isBefore(closing);
+    });
+  }, [shop, serviceDetail]);
 
   const onSubmit = async (values) => {
     setStatus({ type: null, message: '' });

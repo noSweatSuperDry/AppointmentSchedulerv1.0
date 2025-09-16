@@ -36,7 +36,8 @@ export const sendAppointmentEmails = async ({
     return;
   }
 
-  const baseDetails = `Service: ${service.name}\nBarber: ${barber.name}\nDate: ${appointment.startTime.toLocaleString()}\nDuration: ${service.durationMinutes} minutes`;
+  const start = appointment.startTime instanceof Date ? appointment.startTime : new Date(appointment.startTime);
+  const baseDetails = `Service: ${service.name}\nBarber: ${barber.name}\nDate: ${start.toLocaleString()}\nDuration: ${service.durationMinutes} minutes`;
 
   const messages = [];
 

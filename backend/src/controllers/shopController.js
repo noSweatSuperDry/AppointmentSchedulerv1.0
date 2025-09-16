@@ -1,9 +1,9 @@
 import { validationResult } from 'express-validator';
-import { ShopSettings } from '../models/ShopSettings.js';
+import { getShopSettings as fetchShopSettings, saveShopSettings } from '../data/index.js';
 
 export const getShopSettings = async (_req, res, next) => {
   try {
-    const settings = await ShopSettings.findOne().sort({ updatedAt: -1 });
+    const settings = await fetchShopSettings();
     res.json(settings);
   } catch (error) {
     next(error);
@@ -17,12 +17,7 @@ export const upsertShopSettings = async (req, res, next) => {
   }
 
   try {
-    const updated = await ShopSettings.findOneAndUpdate({}, req.body, {
-      new: true,
-      upsert: true,
-      runValidators: true
-    });
-
+    const updated = await saveShopSettings(req.body);
     res.json(updated);
   } catch (error) {
     next(error);

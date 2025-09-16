@@ -6,11 +6,11 @@ Full-stack barber appointment scheduling platform built with the MERN stack. Cus
 
 ```
 AppointmentApp/
-├── backend/         # Express API, MongoDB models, email notifications
+├── backend/         # Express API, lightweight JSON data server, email notifications
 │   └── src/
-│       ├── config/  # Environment + database setup
+│       ├── config/  # Environment setup
 │       ├── controllers/
-│       ├── models/
+│       ├── data/    # File-backed datastore helpers
 │       ├── routes/
 │       └── services/
 ├── frontend/        # React single-page app (Vite)
@@ -23,11 +23,12 @@ AppointmentApp/
 └── README.md
 ```
 
-## Backend (Express + MongoDB)
+## Backend (Express + JSON datastore)
 
 ### Features
 
 - REST endpoints for services, barbers, customers, appointments, and shop settings
+- File-backed datastore (no external database required) with simple persistence
 - Appointment creation validates availability and auto-calculates end time
 - Sends confirmation emails to both customer and barber via SMTP (Nodemailer)
 - Configurable business metadata (name, location, hours) exposed for the frontend
@@ -80,8 +81,8 @@ The backend uses Nodemailer. Provide valid SMTP credentials in `.env` (`SMTP_HOS
 
 ## Data considerations
 
-- MongoDB collections: `services`, `barbers`, `customers`, `appointments`, `shopsettings`
-- `appointments` enforce a unique index on barber + start time to avoid double-booking (except cancelled slots)
+- Data persists to `backend/data/database.json`; commit or back up as needed
+- Appointments block duplicate barber/time slots while status is not `cancelled`
 - Customer records may be linked to appointments via `customerId` but are optional for quick bookings
 
 ## Next steps / enhancements
