@@ -1,14 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
+dayjs.extend(customParseFormat);
 import { createAppointment, fetchBarbers, fetchServices, fetchShopSettings } from '../utils/api.js';
+
+const normalizeTime = (value) => {
+  if (!value) return value;
+  if (/^\d{2}:\d{2}$/.test(value)) return value;
+  return value.slice(0, 5);
+};
 
 const timeOptions = (open, close) => {
   if (!open || !close) {
     return [];
   }
-  const start = dayjs(open, 'HH:mm');
-  const end = dayjs(close, 'HH:mm');
+  const start = dayjs(normalizeTime(open), 'HH:mm');
+  const end = dayjs(normalizeTime(close), 'HH:mm');
   const slots = [];
 
   let cursor = start;
@@ -77,18 +85,21 @@ export default function BookingPage() {
     );
   }, [barbers, selectedService]);
 
+  const usingDefaultHours = !shop?.openingTime || !shop?.closingTime;
+  const openingTime = normalizeTime(shop?.openingTime) || '09:00';
+  const closingTime = normalizeTime(shop?.closingTime) || '18:00';
+
   const slotOptions = useMemo(() => {
-    if (!shop?.openingTime || !shop?.closingTime) return [];
-    const baseSlots = timeOptions(shop.openingTime, shop.closingTime);
+    const baseSlots = timeOptions(openingTime, closingTime);
     if (!serviceDetail) return baseSlots;
 
-    const closing = dayjs(shop.closingTime, 'HH:mm');
+    const closing = dayjs(closingTime, 'HH:mm');
     return baseSlots.filter((slot) => {
       const start = dayjs(slot, 'HH:mm');
       const end = start.add(Number(serviceDetail.durationMinutes || 0), 'minute');
       return end.isSame(closing) || end.isBefore(closing);
     });
-  }, [shop, serviceDetail]);
+  }, [openingTime, closingTime, serviceDetail]);
 
   const onSubmit = async (values) => {
     setStatus({ type: null, message: '' });
@@ -125,7 +136,11 @@ export default function BookingPage() {
       <section className="card">
         <div className="section-title">
           <h2>Book your visit</h2>
-          {shop ? <span className="badge">Open {shop.openingTime} - {shop.closingTime}</span> : null}
+          {shop?.openingTime && shop?.closingTime ? (
+            <span className="badge">Open {normalizeTime(shop.openingTime)} - {normalizeTime(shop.closingTime)}</span>
+          ) : (
+            <span className="badge">Default hours 09:00 - 18:00</span>
+          )}
         </div>
         <p style={{ marginTop: 0, color: '#64748b' }}>
           Select a service and preferred barber, then choose a time that works for you.
@@ -189,6 +204,13 @@ export default function BookingPage() {
                 ))}
               </select>
               {errors.time && <small style={{ color: '#b91c1c' }}>{errors.time.message}</small>}
+              {slotOptions.length === 0 ? (
+                <small style={{ color: '#64748b' }}>
+                  {usingDefaultHours
+                    ? 'Add services and barbers to enable booking slots.'
+                    : 'No available slots. Adjust opening hours or service duration.'}
+                </small>
+              ) : null}
             </div>
           </div>
 
